@@ -1,0 +1,54 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- 1. Создаем GUI
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+local Button = Instance.new("TextButton", ScreenGui)
+Button.Size = UDim2.new(0, 150, 0, 50)
+Button.Position = UDim2.new(0.5, -75, 0.1, 0)
+Button.Text = "Kill: OFF"
+Button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+
+local killEnabled = false
+
+-- 2. Логика переключения
+Button.MouseButton1Click:Connect(function()
+    killEnabled = not killEnabled
+    Button.Text = killEnabled and "Kill: ON" or "Kill: OFF"
+    Button.BackgroundColor3 = killEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+end)
+
+-- 3. Логика убийства при касании
+-- Используем .Touched на персонаже, чтобы отслеживать касания
+local function onTouch(hit)
+    if not killEnabled then return end
+    
+    local character = hit.Parent
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    -- Проверяем:
+    -- 1. Есть ли гуманоид
+    -- 2. Не является ли объект частью нашего персонажа (чтобы себя не убить)
+    if humanoid and character.Name ~= LocalPlayer.Name then
+        -- Локальное убийство (визуальное)
+        humanoid.Health = 0 
+    end
+end
+
+-- Привязываем событие к ногам персонажа (наиболее частая зона касания)
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local legs = {char:WaitForChild("Left Leg"), char:WaitForChild("Right Leg")}
+    for _, leg in pairs(legs) do
+        leg.Touched:Connect(onTouch)
+    end
+end)
+
+-- Для текущего персонажа (если он уже загружен)
+if LocalPlayer.Character then
+    local char = LocalPlayer.Character
+    local legs = {char:FindFirstChild("Left Leg"), char:FindFirstChild("Right Leg")}
+    for _, leg in pairs(legs) do
+        if leg then leg.Touched:Connect(onTouch) end
+    end
+end
