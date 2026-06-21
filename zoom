@@ -1,0 +1,138 @@
+-- Получаем службы
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Определяем безопасное место для GUI в мобильном лаунчере
+-- Функция gethui() есть в Delta, она прячет чит-меню от античитов игры
+local targetParent = nil
+if gethui then
+    targetParent = gethui()
+else
+    targetParent = game:GetService("CoreGui")
+end
+
+-- 1. Создаем основной контейнер интерфейса
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DeltaZoomMenu"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = targetParent
+
+-- 2. Главная панель (Фрейм)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 220, 0, 115)
+-- Центрируем чуть ближе к правому краю для удобства под большой палец
+mainFrame.Position = UDim2.new(0.6, 0, 0.2, 0) 
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 27)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true -- Панель МОЖНО двигать пальцем по экрану телефона!
+mainFrame.Parent = screenGui
+
+-- Закругляем углы панели
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 12)
+frameCorner.Parent = mainFrame
+
+-- 3. Текст: Название
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -20, 0, 25)
+titleLabel.Position = UDim2.new(0, 12, 0, 8)
+titleLabel.Text = "• Vivo X300 Pro"
+titleLabel.TextColor3 = Color3.fromRGB(110, 160, 255)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 14
+titleLabel.BackgroundTransparency = 1
+titleLabel.Parent = mainFrame
+
+-- 4. Текст: Режим
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 25)
+statusLabel.Position = UDim2.new(0, 0, 0, 33)
+statusLabel.Text = "100x OPTICAL ZOOM"
+statusLabel.TextColor3 = Color3.fromRGB(40, 220, 100)
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.TextSize = 15
+statusLabel.BackgroundTransparency = 1
+statusLabel.Parent = mainFrame
+
+-- 5. Контейнер для кнопок
+local row = Instance.new("Frame")
+row.Size = UDim2.new(1, -24, 0, 35)
+row.Position = UDim2.new(0, 12, 0, 68)
+row.BackgroundTransparency = 1
+row.Parent = mainFrame
+
+-- Кнопка МИНУС (Отдаление зума)
+local minusBtn = Instance.new("TextButton")
+minusBtn.Size = UDim2.new(0, 50, 1, 0)
+minusBtn.Position = UDim2.new(0, 0, 0, 0)
+minusBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+minusBtn.Text = "-"
+minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minusBtn.Font = Enum.Font.GothamBold
+minusBtn.TextSize = 22
+minusBtn.Parent = row
+Instance.new("UICorner", minusBtn).CornerRadius = UDim.new(0, 8)
+
+-- Табло кратности зума
+local valLabel = Instance.new("TextLabel")
+valLabel.Size = UDim2.new(0, 76, 1, 0)
+valLabel.Position = UDim2.new(0, 58, 0, 0)
+valLabel.BackgroundColor3 = Color3.fromRGB(50, 90, 220)
+valLabel.Text = "1x"
+valLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+valLabel.Font = Enum.Font.GothamBold
+valLabel.TextSize = 16
+valLabel.Parent = row
+Instance.new("UICorner", valLabel).CornerRadius = UDim.new(0, 8)
+
+-- Кнопка ПЛЮС (Приближение зума)
+local plusBtn = Instance.new("TextButton")
+plusBtn.Size = UDim2.new(0, 50, 1, 0)
+plusBtn.Position = UDim2.new(0, 142, 0, 0)
+plusBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
+plusBtn.Text = "+"
+plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+plusBtn.Font = Enum.Font.GothamBold
+plusBtn.TextSize = 22
+plusBtn.Parent = row
+Instance.new("UICorner", plusBtn).CornerRadius = UDim.new(0, 8)
+
+--- ЛОГИКА ОПТИЧЕСКОГО ЗУМА ---
+local currentZoomLevel = 1 
+
+local function updateZoom()
+    -- Рассчитываем угол обзора камеры (базовый FOV в роблоксе = 70)
+    -- Чем выше кратность зума, тем меньше FOV (сильнее фокус на объекте)
+    local targetFOV = 70 / currentZoomLevel
+    camera.FieldOfView = targetFOV
+    valLabel.Text = currentZoomLevel .. "x"
+end
+
+-- Кнопка ПЛЮС: приближает камеру к объектам
+plusBtn.MouseButton1Click:Connect(function()
+    if currentZoomLevel < 100 then
+        if currentZoomLevel < 10 then
+            currentZoomLevel = currentZoomLevel + 1 -- До 10х плавно по одному шагу
+        else
+            currentZoomLevel = currentZoomLevel + 10 -- После 10х шагами по 10
+        end
+        if currentZoomLevel > 100 then currentZoomLevel = 100 end
+        updateZoom()
+    end
+end)
+
+-- Кнопка МИНУС: отдаляет зум обратно
+minusBtn.MouseButton1Click:Connect(function()
+    if currentZoomLevel > 1 then
+        if currentZoomLevel <= 10 then
+            currentZoomLevel = currentZoomLevel - 1
+        else
+            currentZoomLevel = currentZoomLevel - 10
+        end
+        if currentZoomLevel < 1 then currentZoomLevel = 1 end
+        updateZoom()
+    end
+end)
