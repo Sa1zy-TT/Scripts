@@ -1,0 +1,134 @@
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local localPlayer = players.LocalPlayer
+
+-- Защита от удаления при смерти и скрытие от античитов игры
+local targetParent = gethui and gethui() or game:GetService("CoreGui")
+
+-- 1. Основной контейнер GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "Sa1zyMultiTool"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = targetParent
+
+-- 2. Главная панель
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 230, 0, 145)
+mainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 27)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true -- Можно двигать по экрану телефона
+mainFrame.Parent = screenGui
+
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+
+-- Заголовок меню
+local titleLabel = Instance.new("TextLabel", mainFrame)
+titleLabel.Size = UDim2.new(1, -20, 0, 25)
+titleLabel.Position = UDim2.new(0, 12, 0, 8)
+titleLabel.Text = "• Sa1zy Multi-Tool"
+titleLabel.TextColor3 = Color3.fromRGB(110, 160, 255)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 14
+titleLabel.BackgroundTransparency = 1
+
+-- Отображение текущего режима
+local modeLabel = Instance.new("TextLabel", mainFrame)
+modeLabel.Size = UDim2.new(1, 0, 0, 25)
+modeLabel.Position = UDim2.new(0, 0, 0, 38)
+modeLabel.Text = "MODE: TOUCH FLING"
+modeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+modeLabel.Font = Enum.Font.GothamBold
+modeLabel.TextSize = 13
+modeLabel.BackgroundTransparency = 1
+
+-- Кнопка ПЕРЕКЛЮЧЕНИЯ режимов (Синяя)
+local switchBtn = Instance.new("TextButton", mainFrame)
+switchBtn.Size = UDim2.new(1, -24, 0, 32)
+switchBtn.Position = UDim2.new(0, 12, 0, 68)
+switchBtn.BackgroundColor3 = Color3.fromRGB(50, 90, 220)
+switchBtn.Text = "SWITCH MODE"
+switchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+switchBtn.Font = Enum.Font.GothamBold
+switchBtn.TextSize = 13
+Instance.new("UICorner", switchBtn).CornerRadius = UDim.new(0, 8)
+
+-- Кнопка ВКЛ / ВЫКЛ (Красная/Зеленая)
+local toggleBtn = Instance.new("TextButton", mainFrame)
+toggleBtn.Size = UDim2.new(1, -24, 0, 32)
+toggleBtn.Position = UDim2.new(0, 12, 0, 105)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+toggleBtn.Text = "STATUS: OFF"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 13
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 8)
+
+--- ЛОГИКА СУПЕР-ФУНКЦИЙ ---
+
+local currentMode = "Fling" -- Может быть "Fling" или "Kill"
+local isActive = false
+
+-- Переключатель режимов
+switchBtn.MouseButton1Click:Connect(function()
+    if currentMode == "Fling" then
+        currentMode = "Kill"
+        modeLabel.Text = "MODE: TOUCH KILL"
+        modeLabel.TextColor3 = Color3.fromRGB(255, 140, 0) -- Оранжевый для Килла
+    else
+        currentMode = "Fling"
+        modeLabel.Text = "MODE: TOUCH FLING"
+        modeLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- Белый для Флинга
+    end
+end)
+
+-- Активация скрипта
+toggleBtn.MouseButton1Click:Connect(function()
+    isActive = not isActive
+    if isActive then
+        toggleBtn.Text = "STATUS: ON"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 80) -- Зеленый
+    else
+        toggleBtn.Text = "STATUS: OFF"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60) -- Красный
+    end
+end)
+
+-- Основной цикл проверки дистанции до игроков
+runService.Heartbeat:Connect(function()
+    if not isActive then return end
+    
+    local character = localPlayer.Character
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    for _, targetPlayer in pairs(players:GetPlayers()) do
+        if targetPlayer ~= localPlayer and targetPlayer.Character then
+            local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetRoot then
+                -- Считаем расстояние между тобой и другим челом
+                local distance = (rootPart.Position - targetRoot.Position).Magnitude
+                
+                if distance < 4.5 then -- Дистанция касания
+                    if currentMode == "Fling" then
+                        -- РЕЖИМ ФЛИНГА: Раскручиваем физику на полную
+                        rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+                    elseif currentMode == "Kill" then
+                        -- РЕЖИМ КИЛЛА: Используем firetouchinterest, если в руке есть Tool
+                        local tool = character:FindFirstChildOfClass("Tool")
+                        if tool and tool:FindFirstChild("Handle") then
+                            firetouchinterest(targetRoot, tool.Handle, 0)
+                            firetouchinterest(targetRoot, tool.Handle, 1)
+                        else
+                            -- Если пустые руки, мощно вбиваем цель вниз
+                            rootPart.AssemblyLinearVelocity = Vector3.new(0, -99999, 0)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
